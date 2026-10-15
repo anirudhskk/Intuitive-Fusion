@@ -1,0 +1,27 @@
+# Local development dependencies. Production equivalents are in infra/cdk.
+services:
+  postgres:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: if
+      POSTGRES_PASSWORD: if
+      POSTGRES_DB: intuitive_fusion
+    ports: ["5432:5432"]
+    volumes: [pgdata:/var/lib/postgresql/data]
+
+  minio: # stands in for S3 (documents + sealed bid box)
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: minio12345
+    ports: ["9000:9000", "9001:9001"]
+    volumes: [miniodata:/data]
+
+  mailpit: # catches outbound email (approvals, alerts, supplier invites)
+    image: axllent/mailpit:latest
+    ports: ["1025:1025", "8025:8025"]
+
+volumes:
+  pgdata:
+  miniodata:

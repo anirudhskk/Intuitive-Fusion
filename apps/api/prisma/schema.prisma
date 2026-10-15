@@ -1,0 +1,650 @@
+// Intuitive Fusion — core transactional model (Aurora PostgreSQL, BRS §5.3)
+//
+// Design principles
+//  * Multi-tenant: every tenant-owned row carries tenantId; Postgres RLS is the backstop (SEC-D10).
+//  * Facts, not copies: procurement data lives once in ProcurementField; documents bind to facts and
+//    re-render when facts change (FR-0010, NFR-P03, AI narrative "pushed to other fields").
+//  * Append-only audit with hash chaining (SEC-L01..L04).
+//  * Soft delete for signed/contract records (FR-0455, NFR-CA02).
+//  * Bid content never lives in the DB — only sealed S3 object refs (SEC-D03/D04, SEC-AC13).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Tenancy, identity, org ─────────────────────────────
+
+model Tenant {
+  id          String   @id @default(uuid())
+  name        String
+  sector      Sector
+  dataRegion  String // nominated hosting region, e.g. ap-southeast-2 (NFR-R02, SEC-D09)
+  policyGroup String? // e.g. "CPR" (Commonwealth Procurement Rules) — layer 2 of the AI policy stack
+  aiPolicy    Json // approved models, routing, approval-vs-AI gates (NFR-C01, SEC-TP07, SEC-AC12)
+  settings    Json // segmented admin config: finance, users, legal, procurement, delegations (FR-0680)
+  createdAt   DateTime @default(now())
+
+  orgUnits     OrgUnit[]
+  users        User[]
+  procurements Procurement[]
+}
+
+enum Sector {
+  FEDERAL_GOVERNMENT
+  STATE_GOVERNMENT
+  LOCAL_GOVERNMENT
+  PRIVATE
+}
+
+/// Configurable organisational hierarchy: division → business unit → team (SEC-AC01, SEC-AC08)
+model OrgUnit {
+  id         String    @id @default(uuid())
+  tenantId   String
+  tenant     Tenant    @relation(fields: [tenantId], references: [id])
+  parentId   String?
+  parent     OrgUnit?  @relation("OrgTree", fields: [parentId], references: [id])
+  children   OrgUnit[] @relation("OrgTree")
+  name       String
+  level      String // division | business_unit | team
+  costCentre String?
+  users      User[]
+
+  @@index([tenantId])
+}
+
+model User {
+  id          String   @id @default(uuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id])
+  externalId  String // IdP subject (SSO)
+  email       String
+  displayName String
+  roleTitle   String? // used to resolve "whoever is in my manager's role at that time"
+  orgUnitId   String?
+  orgUnit     OrgUnit? @relation(fields: [orgUnitId], references: [id])
+  active      Boolean  @default(true)
+
+  roleAssignments RoleAssignment[]
+
+  @@unique([tenantId, externalId])
+}
+
+/// RBAC grants, optionally scoped and time-bound (SEC-AC01, SEC-A05, FR-0435)
+model RoleAssignment {
+  id         String    @id @default(uuid())
+  tenantId   String
+  userId     String
+  user       User      @relation(fields: [userId], references: [id])
+  role       String // procurement_lead, procurement_officer, delegate, evaluator, panel_chair, probity_advisor, legal, finance, admin_finance, ...
+  scopeType  String // tenant | org_unit | procurement
+  scopeId    String?
+  validFrom  DateTime  @default(now())
+  validUntil DateTime?
+
+  @@index([tenantId, userId])
+}
+
+/// Delegation of authority: value thresholds per kind of authority (SEC-AC04, SEC-AC05, FR-0715, FR-0725, FR-0585)
+model DelegationRule {
+  id          String          @id @default(uuid())
+  tenantId    String
+  kind        DelegationKind
+  orgUnitId   String?
+  roleTitle   String?
+  userId      String?
+  minValue    Decimal         @db.Decimal(18, 2)
+  maxValue    Decimal?        @db.Decimal(18, 2)
+  actingForId String? // acting / on-behalf-of during absence
+  validUntil  DateTime?
+
+  @@index([tenantId, kind])
+}
+
+enum DelegationKind {
+  SOURCING_APPROVAL
+  CONTRACT_SIGNING
+  FUNDING_ENVELOPE
+  VARIATION_APPROVAL
+}
+
+// ───────────────────────────── Workflow & templates ─────────────────────────────
+
+/// Library + custom workflows (simple → high-risk/high-value) (FR-0025, FR-0705, FR-0710)
+model WorkflowDefinition {
+  id         String   @id @default(uuid())
+  tenantId   String?  // null = platform default
+  name       String
+  tier       String // simple | intermediate | complex | high_risk_high_value
+  version    Int
+  definition Json // stages, gates (human vs AI approval), required engagements, mandatory checkpoints
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@unique([tenantId, name, version])
+}
+
+/// Document templates with field bindings (JSON) — platform defaults, panel templates (e.g.
+/// Commonwealth Contracting Suite) and tenant-uploaded templates (FR-0085, FR-0750, FR-0395)
+model Template {
+  id           String       @id @default(uuid())
+  tenantId     String?
+  kind         DocumentKind
+  name         String
+  jurisdiction String?
+  panel        String?
+  bindings     Json // { "milestones": "fact:milestones", "closingDate": "fact:rfx.closeAt", ... }
+  s3Key        String
+  version      Int
+}
+
+// ───────────────────────────── Procurement core ─────────────────────────────
+
+model Procurement {
+  id           String          @id @default(uuid())
+  tenantId     String
+  tenant       Tenant          @relation(fields: [tenantId], references: [id])
+  number       String // configurable sequential format (FR-0695)
+  title        String
+  phase        ProcurementPhase
+  route        IntakeRoute
+  complexity   ComplexityScore?
+  workflowId   String?
+  ecv          Decimal?        @db.Decimal(18, 2) // estimated contract value
+  currency     String          @default("AUD")
+  categoryCode String? // UNSPSC / CPV / NAICS (FR-0015)
+  orgUnitId    String?
+  ownerUserId  String
+  sensitivity  String          @default("standard") // ABAC attribute (SEC-AC02)
+  source       RecordSource    @default(NATIVE) // migrated records flagged (FR-0670)
+  parentContractId String? // renewals / variations / extensions start from a contract (FR-0570)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  fields       ProcurementField[]
+  members      ProcurementMember[]
+  documents    Document[]
+  rfxs         Rfx[]
+  coi          CoiDeclaration[]
+  contracts    Contract[]
+
+  @@unique([tenantId, number])
+  @@index([tenantId, phase])
+}
+
+enum ProcurementPhase {
+  INTAKE
+  PLANNING
+  PLAN_APPROVAL
+  RFX_PREPARATION
+  OPEN_TO_MARKET
+  EVALUATION
+  NEGOTIATION
+  REPORT_APPROVAL
+  CONTRACT_DRAFTING
+  SIGNING
+  CONTRACT_MANAGEMENT
+  CLOSED
+  CANCELLED
+}
+
+enum IntakeRoute {
+  SELF_SERVICE
+  PROCUREMENT_TEAM_LED
+}
+
+enum ComplexityScore {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RecordSource {
+  NATIVE
+  MIGRATED
+}
+
+/// The single source of truth for every value that appears in any document.
+model ProcurementField {
+  id            String      @id @default(uuid())
+  tenantId      String
+  procurementId String
+  procurement   Procurement @relation(fields: [procurementId], references: [id])
+  key           String // e.g. "milestones", "risks", "evaluationCriteria", "dueDiligence"
+  value         Json
+  version       Int         @default(1)
+  source        FieldSource
+  confidence    Float? // AI confidence; low values prompt follow-up questions (FR-0035)
+  updatedBy     String
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([procurementId, key])
+}
+
+enum FieldSource {
+  AI
+  USER
+  INTEGRATION
+  MIGRATION
+}
+
+model ProcurementMember {
+  id              String      @id @default(uuid())
+  tenantId        String
+  procurementId   String
+  procurement     Procurement @relation(fields: [procurementId], references: [id])
+  userId          String
+  role            String // evaluator | panel_chair | probity_advisor | advisor | steering | legal | approver ...
+  evalStream      String? // technical | commercial (SEC-AC07)
+  accessExpiresAt DateTime? // time-bound access (FR-0435)
+  removedAt       DateTime? // e.g. material conflict (FR-0335)
+
+  @@unique([procurementId, userId, role])
+}
+
+model Document {
+  id             String         @id @default(uuid())
+  tenantId       String
+  procurementId  String?
+  procurement    Procurement?   @relation(fields: [procurementId], references: [id])
+  contractId     String?
+  kind           DocumentKind
+  templateId     String?
+  status         DocumentStatus @default(DRAFT)
+  currentVersion Int            @default(1)
+  lockedAt       DateTime? // approved plans lock; procurement team may reopen
+  versions       DocumentVersion[]
+}
+
+enum DocumentKind {
+  REQUEST
+  PROCUREMENT_PLAN
+  RISK_ASSESSMENT
+  RFX
+  TENDER_PACK
+  QA_ADDENDUM
+  EVALUATION_SHEET
+  EVALUATION_REPORT
+  NEGOTIATION_PLAN
+  PROBITY_PLAN
+  CONTRACT
+  CONTRACT_MANAGEMENT_PLAN
+  RISK_MANAGEMENT_PLAN
+  EXTENSION_LETTER
+  VARIATION_NOTICE
+}
+
+enum DocumentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  LOCKED
+  SUPERSEDED
+}
+
+/// Immutable snapshots for tracked changes / comparison (FR-0740, NFR-CA02)
+model DocumentVersion {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id])
+  version    Int
+  factsHash  String
+  snapshot   Json // resolved bindings at this version
+  s3Key      String? // rendered Word/PDF
+  createdBy  String
+  createdAt  DateTime @default(now())
+
+  @@unique([documentId, version])
+}
+
+// ───────────────────────────── Governance ─────────────────────────────
+
+model Approval {
+  id          String          @id @default(uuid())
+  tenantId    String
+  subjectType String // procurement_plan | publish_permission | evaluation_report | contract | variation ...
+  subjectId   String
+  stage       String
+  approverId  String
+  onBehalfOf  String?
+  decision    ApprovalDecision @default(PENDING)
+  channel     String? // web | mobile | email_link | voice | teams
+  comment     String?
+  decidedAt   DateTime?
+  stampHash   String? // visible approval stamp on platform + documents (FR-0780)
+  dueAt       DateTime? // reminders / escalation (FR-0066)
+
+  @@index([tenantId, approverId, decision])
+}
+
+enum ApprovalDecision {
+  PENDING
+  APPROVED
+  REJECTED
+  OVERRIDDEN
+}
+
+/// Conflict of interest across plan, evaluation and report stages (FR-0105, FR-0300..0335, FR-0370)
+model CoiDeclaration {
+  id            String         @id @default(uuid())
+  tenantId      String
+  procurementId String
+  procurement   Procurement    @relation(fields: [procurementId], references: [id])
+  userId        String
+  stage         String // plan | post_close | report
+  hasConflict   Boolean
+  statement     String?
+  disposition   CoiDisposition?
+  decidedBy     String?
+  declaredAt    DateTime       @default(now())
+}
+
+enum CoiDisposition {
+  IMMATERIAL
+  MINOR_EXCLUDED_FROM_CONFLICTED_ITEM
+  MATERIAL_REMOVED
+}
+
+// ───────────────────────────── RFx, tender portal, suppliers ─────────────────────────────
+
+model Rfx {
+  id            String      @id @default(uuid())
+  tenantId      String
+  procurementId String
+  procurement   Procurement @relation(fields: [procurementId], references: [id])
+  type          RfxType
+  stage         Int         @default(1) // multi-stage tendering (FR-0220)
+  isOpen        Boolean // open vs invite-only (FR-0160)
+  status        String // staged | published | closed | cancelled
+  publishAt     DateTime?
+  closeAt       DateTime?
+  publicRegisterRefs Json? // AusTender etc. (FR-0140)
+
+  invitations TenderInvitation[]
+  submissions Submission[]
+  questions   Question[]
+  evaluations Evaluation[]
+}
+
+enum RfxType {
+  RFT
+  RFP
+  RFQ
+  RFI
+  EOI
+}
+
+/// Suppliers are global so a supplier can (in future) register once across enterprises.
+model Supplier {
+  id          String   @id @default(uuid())
+  legalName   String
+  abn         String? // or other company registration number
+  country     String   @default("AU")
+  createdAt   DateTime @default(now())
+
+  tenantLinks SupplierTenantLink[]
+  contacts    SupplierContact[]
+}
+
+model SupplierTenantLink {
+  id                String   @id @default(uuid())
+  tenantId          String
+  supplierId        String
+  supplier          Supplier @relation(fields: [supplierId], references: [id])
+  status            String // invited | active | quarantined | blocked
+  screeningStatus   String? // sanctions/watchlist (FR-0180)
+  insuranceExpiry   DateTime? // compliance hold (FR-0550)
+  onboardingAnswers Json? // tenant-specific questions (FR-0215)
+
+  @@unique([tenantId, supplierId])
+}
+
+model SupplierContact {
+  id         String    @id @default(uuid())
+  supplierId String
+  supplier   Supplier  @relation(fields: [supplierId], references: [id])
+  externalId String // supplier identity pool subject (SEC-A03)
+  email      String
+  name       String
+  isPrimary  Boolean   @default(false)
+  removedAt  DateTime? // de-provisioned when they leave (SEC-A06)
+}
+
+/// Finance-only segment, field-level encrypted (SEC-AC10, SEC-D07). Separate table on purpose.
+model SupplierBankDetail {
+  id            String   @id @default(uuid())
+  tenantId      String
+  supplierId    String
+  encryptedBlob Bytes
+  kmsKeyRef     String
+  verifiedAt    DateTime? // pre-signing verification (FR-0415)
+}
+
+model TenderInvitation {
+  id         String   @id @default(uuid())
+  rfxId      String
+  rfx        Rfx      @relation(fields: [rfxId], references: [id])
+  supplierId String
+  invitedAt  DateTime @default(now())
+}
+
+/// Metadata only. Content sits encrypted in the S3 bid box under a per-tenant envelope key and is
+/// unreadable by any internal role until close (SEC-AC13, SEC-D03, SEC-D04).
+model Submission {
+  id             String    @id @default(uuid())
+  tenantId       String
+  rfxId          String
+  rfx            Rfx       @relation(fields: [rfxId], references: [id])
+  supplierId     String
+  stage          Int       @default(1)
+  version        Int       @default(1) // latest version authoritative (FR-0230)
+  status         String // uploading | submitted | late_permitted | discarded | unsealed
+  sealedObjects  Json // [{ s3Key, sha256, malwareScan }]
+  submittedAt    DateTime?
+  receiptSentAt  DateTime?
+}
+
+/// Anonymised Q&A (FR-0135, FR-0195)
+model Question {
+  id          String    @id @default(uuid())
+  rfxId       String
+  rfx         Rfx       @relation(fields: [rfxId], references: [id])
+  askedBySupplierId String // never exposed to other suppliers
+  text        String
+  answer      String?
+  visibility  String // all | single
+  publishedAt DateTime?
+}
+
+// ───────────────────────────── Evaluation ─────────────────────────────
+
+model Evaluation {
+  id        String   @id @default(uuid())
+  tenantId  String
+  rfxId     String
+  rfx       Rfx      @relation(fields: [rfxId], references: [id])
+  stage     Int      @default(1)
+  method    String // scoring | ranking (FR-0280)
+  pricingSeparated Boolean @default(true)
+  status    String // compliance_gate | individual | consensus | locked
+  criteria  EvaluationCriterion[]
+  scores    Score[]
+}
+
+model EvaluationCriterion {
+  id           String     @id @default(uuid())
+  evaluationId String
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id])
+  name         String
+  weight       Decimal    @db.Decimal(5, 2)
+  stream       String // technical | commercial
+  isPassFail   Boolean    @default(false) // compliance gate (FR-0265)
+}
+
+/// Individual scores are hidden from other evaluators until consensus (FR-0270)
+model Score {
+  id           String     @id @default(uuid())
+  evaluationId String
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id])
+  criterionId  String
+  submissionId String
+  evaluatorId  String
+  phase        String // individual | consensus
+  value        Decimal?   @db.Decimal(6, 2)
+  rank         Int?
+  comment      String?
+  lockedAt     DateTime? // read-only after substitution/consensus (FR-0305)
+}
+
+// ───────────────────────────── Contracts & contract management ─────────────────────────────
+
+model Contract {
+  id               String       @id @default(uuid())
+  tenantId         String
+  procurementId    String?
+  procurement      Procurement? @relation(fields: [procurementId], references: [id])
+  number           String
+  kind             ContractKind
+  parentContractId String? // variation → contract, work order → master agreement (FR-0565, FR-0575)
+  parent           Contract?    @relation("ContractTree", fields: [parentContractId], references: [id])
+  children         Contract[]   @relation("ContractTree")
+  supplierId       String
+  value            Decimal      @db.Decimal(18, 2)
+  startDate        DateTime?
+  endDate          DateTime?
+  status           String // drafting | legal_review | signing | active | expired | terminated
+  signedAt         DateTime? // locked once signed
+  source           RecordSource @default(NATIVE)
+  deletedAt        DateTime? // soft delete only (FR-0455)
+
+  options     ContractOption[]
+  obligations Obligation[]
+  deviations  Deviation[]
+
+  @@unique([tenantId, number])
+}
+
+enum ContractKind {
+  CONTRACT
+  MASTER_AGREEMENT
+  WORK_ORDER
+  VARIATION
+  NDA
+}
+
+model ContractOption {
+  id          String   @id @default(uuid())
+  contractId  String
+  contract    Contract @relation(fields: [contractId], references: [id])
+  periodMonths Int
+  noticeBy    DateTime
+  exercisedAt DateTime?
+}
+
+/// AI-extracted or manual obligations, KPIs, SLAs, milestones, notice periods (FR-0490, FR-0530, FR-0675)
+model Obligation {
+  id          String   @id @default(uuid())
+  contractId  String
+  contract    Contract @relation(fields: [contractId], references: [id])
+  kind        String // milestone | deliverable | kpi | sla | notice | rebate | escalation
+  description String
+  dueDate     DateTime?
+  source      String // ai_extracted | manual | migrated
+  clauseRef   String?
+}
+
+model Deviation {
+  id         String   @id @default(uuid())
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id])
+  clause     String
+  proposed   String
+  riskRating String // AI-proposed, legal-amendable (FR-0475)
+  mandatoryClauseBreach Boolean @default(false) // FR-0400
+  status     String
+}
+
+model Alert {
+  id          String   @id @default(uuid())
+  tenantId    String
+  subjectType String
+  subjectId   String
+  triggerAt   DateTime
+  channels    String[] // in_app | email | teams | slack | sms
+  recipients  Json // user ids or role titles resolved at fire time
+  mandatory   Boolean  @default(false) // 180/90/60-day expiry countdown cannot be muted (FR-0510)
+  createdVia  String // system | clause_extraction | user_plain_language
+  firedAt     DateTime?
+
+  @@index([tenantId, triggerAt])
+}
+
+// ───────────────────────────── Conversations & audit ─────────────────────────────
+
+model Conversation {
+  id          String   @id @default(uuid())
+  tenantId    String
+  userId      String
+  contextType String
+  contextId   String?
+  createdAt   DateTime @default(now())
+  turns       ConversationTurn[]
+}
+
+model ConversationTurn {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id])
+  role           String // user | assistant | tool
+  content        String
+  audioS3Key     String?
+  modelId        String?
+  createdAt      DateTime     @default(now())
+}
+
+/// Append-only. App DB role has INSERT only. prevHash/hash form a tamper-evident chain per tenant.
+model AuditEvent {
+  id          BigInt   @id @default(autoincrement())
+  tenantId    String
+  requestId   String
+  actorId     String
+  actorKind   String // user | ai | system | integration
+  actorRoles  String[]
+  entityType  String
+  entityId    String
+  action      String
+  changes     Json // field-level before/after (SEC-L03)
+  aiModelId   String?
+  occurredAt  DateTime @default(now())
+  prevHash    String?
+  hash        String
+
+  @@index([tenantId, entityType, entityId])
+}
+
+// ───────────────────────────── Migration & integrations ─────────────────────────────
+
+model MigrationBatch {
+  id         String   @id @default(uuid())
+  tenantId   String
+  sourceName String
+  status     String // uploaded | validating | exceptions | committed
+  stats      Json?
+  createdAt  DateTime @default(now())
+}
+
+model IntegrationConnection {
+  id        String  @id @default(uuid())
+  tenantId  String
+  connector String // sap_s4 | oracle_cloud | dynamics | highq | icertis | docusign | adobe_sign | sharepoint | austender | sanctions_provider ...
+  config    Json // field-label mappings (FR-0700)
+  secretRef String // Secrets Manager ARN (SEC-N03)
+  enabled   Boolean @default(true)
+
+  @@unique([tenantId, connector])
+}

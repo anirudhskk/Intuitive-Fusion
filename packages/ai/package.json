@@ -1,0 +1,27 @@
+{
+  "name": "@if/ai",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AI layer: pluggable model gateway, policy stack, conversation orchestration, scoped field editing, guardrails",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc -p tsconfig.json && node --test 'dist/**/*.test.js'",
+    "lint": "echo \"TODO: eslint\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.900.0",
+    "@if/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "~5.9.3"
+  }
+}

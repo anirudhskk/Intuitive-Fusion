@@ -1,0 +1,38 @@
+// Cedar schema for Intuitive Fusion. Validate with: cedar validate --schema schema.cedarschema --policies .
+namespace IF {
+  entity Role;
+  entity OrgUnit in [OrgUnit];
+
+  entity User in [Role, OrgUnit] {
+    tenantId: String,
+    audience: String,              // "internal" | "supplier"
+    supplierId?: String,
+    headOf?: OrgUnit,              // division head / team lead scope (SEC-AC08)
+    sourcingAuthority?: decimal,   // delegation of authority (SEC-AC04)
+    signingAuthority?: decimal,    // distinct legal signing authority (SEC-AC05)
+  };
+
+  entity Procurement in [OrgUnit] {
+    tenantId: String,
+    sensitivity: String,
+    members: Set<User>,
+    tenderAdministrators: Set<User>,
+    probityOfficers: Set<User>,
+    evaluators: Set<User>,
+  };
+
+  entity Rfx { tenantId: String, procurement: Procurement, closed: Bool };
+  entity Submission { tenantId: String, rfx: Rfx, supplierId: String };
+  entity SubmissionSection { tenantId: String, submission: Submission, stream: String };
+  entity Evaluation { tenantId: String, procurement: Procurement };
+  entity SupplierBankDetail { tenantId: String, supplierId: String };
+  entity Contract in [OrgUnit] { tenantId: String, procurement?: Procurement };
+
+  action ReadProcurement, EditProcurement appliesTo { principal: User, resource: Procurement };
+  action Approve appliesTo { principal: User, resource: [Procurement, Contract], context: { value: decimal } };
+  action Sign appliesTo { principal: User, resource: Contract, context: { value: decimal } };
+  action ReadSubmission, DownloadSubmission appliesTo { principal: User, resource: Submission, context: { coiDeclared?: Bool } };
+  action ReadSubmissionSection appliesTo { principal: User, resource: SubmissionSection, context: { evaluatorStream?: String } };
+  action ScoreSubmission appliesTo { principal: User, resource: Evaluation, context: { coiDeclared?: Bool } };
+  action ReadBankDetails appliesTo { principal: User, resource: SupplierBankDetail };
+}

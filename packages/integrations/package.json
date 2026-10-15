@@ -1,0 +1,23 @@
+{
+  "name": "@if/integrations",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Adapter interfaces for ERP, legal systems, e-signature, sanctions/insurance, public registers, document repositories and notification channels",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"TODO: contract tests per adapter\"",
+    "lint": "echo \"TODO: eslint\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "~5.9.3"
+  }
+}

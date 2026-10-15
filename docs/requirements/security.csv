@@ -1,0 +1,196 @@
+ID,Category,Requirement Description,Standard / Reference,Priority (MoSCoW),Status,Owner,Notes
+SEC-A01,Authentication & Identity,"Multi-factor authentication shall be enforced for platform user accounts, supporting TOTP and SMS one-time codes.",ISO/IEC 27001:2022 A.8.5; ACSC Essential Eight (MFA),Must,Draft,Security Lead (TBC),"Source: BRS §5.1.
+
+CLIENT QUERY: Please confirm whether SMS one-time codes are acceptable as an MFA factor for Intuitive Fusion, given SMS-based OTP is generally considered weaker than an authenticator app under the ACSC Essential Eight, or whether TOTP should be the mandatory method."
+SEC-A02,Authentication & Identity,"Single sign-on shall be supported via enterprise identity providers using SAML or OIDC federation, with identity management capabilities for enterprise customers.","ISO/IEC 27001:2022 A.5.16, A.5.17",Must,Draft,Security Lead (TBC),"Source: BRS §5.1; DD — Security.
+
+CLIENT QUERY: Please confirm Intuitive Fusion's own enterprise identity provider (e.g. Azure AD/Entra ID, Okta) and whether SAML or OIDC federation is preferred, so SSO can be scoped and tested against the actual IdP."
+SEC-A03,Authentication & Identity,"External suppliers and tenderers shall authenticate against a separate, federated identity pool, isolated from the internal user directory.","ISO/IEC 27001:2022 A.5.16, A.8.3",Must,Draft,Security Lead (TBC),"Source: BRS §5.1.
+
+CLIENT QUERY: Please confirm the supplier/tenderer identity pool requires no shared infrastructure at all with the internal directory (fully separate tenant), or whether a logically isolated pool within the same identity platform is acceptable."
+SEC-A04,Authentication & Identity,"Where an organisation requires it, the platform shall enforce SSO or mobile-device-based authentication for all actions, disabling any link-based approval path that does not require sign-in.",ISO/IEC 27001:2022 A.8.5,Must,Draft,Security Lead (TBC),"Source: DD — Security. Conflict to resolve with NFR-U05 (approve-from-email without sign-in). Both are stated in the Detailed Design; they must be reconciled as mutually exclusive per-tenant configuration options.
+
+CLIENT QUERY: This requirement already conflicts with NFR-U05 (approve-from-email without sign-in) per the existing Notes. Please confirm Intuitive Fusion's own default preference for this per-tenant configuration, and whether it should be enforced organisation-wide or configurable per delegate/action type."
+SEC-A05,Authentication & Identity,"Identity grants for evaluation committee members, auditors, advisors and probity officers shall be time-bound, expiring automatically at a configured date or on a defined event.",ISO/IEC 27001:2022 A.5.18,Should,Draft,Security Lead (TBC),"Source: BRS §3.8, §2.1; DD — Time based permission.
+
+CLIENT QUERY: Please confirm the specific expiry triggers (fixed date versus event-based, e.g. one month after contract signature) required for time-bound identity grants, consistent with the access-expiry question raised at FR-0435."
+SEC-A06,Authentication & Identity,"Supplier contact access shall be reassignable and de-provisioned when a contact leaves the supplier organisation, so that departed personnel retain no access.",ISO/IEC 27001:2022 A.5.18,Must,Draft,Security Lead (TBC),"Source: BRS §3.5.
+
+CLIENT QUERY: Please confirm the maximum acceptable delay between a supplier contact leaving and their access being de-provisioned — is this expected to be immediate/automatic, or dependent on the supplier notifying Intuitive Fusion per FR-0245?"
+SEC-A07,Authentication & Identity,"Session management controls shall be defined, including idle timeout and re-authentication requirements for sensitive actions such as contract signature.",ISO/IEC 27001:2022 A.8.5,Should,Draft,Security Lead (TBC),"Source: Derived — BRS §5.1. Gap: no session timeout or step-up authentication requirement is stated in either source document. Recommended given the signing and delegation authority model.
+
+CLIENT QUERY: Please confirm the required idle-session timeout duration and whether step-up re-authentication should be mandatory for contract signature and other high-value actions — existing Notes already flag that neither is stated in either source document."
+SEC-AC01,Authorisation & Access Control,"Role-based access control shall be implemented, underpinned by a configurable organisational hierarchy.","ISO/IEC 27001:2022 A.5.15, A.8.3",Must,Draft,Security Lead (TBC),"Source: BRS §4.6, §5.1; DD — Governance.
+
+CLIENT QUERY: Please confirm Intuitive Fusion's organisational hierarchy (divisions, business units, teams) is finalised and available to configure role-based access control against, consistent with the hierarchy question raised at FR-0600."
+SEC-AC02,Authorisation & Access Control,Attribute-based access control shall extend RBAC to enforce project-level sensitivity restrictions.,ISO/IEC 27001:2022 A.5.15,Must,Draft,Security Lead (TBC),"Source: BRS §4.6, §5.1.
+
+CLIENT QUERY: Please confirm the specific project-level sensitivity attributes (beyond general RBAC) that should drive attribute-based access restrictions — for example commercial-in-confidence, defence-adjacent, or high-value flags."
+SEC-AC03,Authorisation & Access Control,"Backend service and data access shall follow least privilege, with fine-grained roles mapped to division, business unit and delegate threshold.",ISO/IEC 27001:2022 A.8.2,Must,Draft,Security Lead (TBC),"Source: BRS §5.1.
+
+CLIENT QUERY: Please confirm the granularity of least-privilege roles Intuitive Fusion expects — role-per-division/business-unit as stated, or a finer-grained model down to individual delegation thresholds."
+SEC-AC04,Authorisation & Access Control,"A delegation-of-authority engine shall match signing and approval authority to defined dollar thresholds, automatically escalating to the next-level delegate where a contract or variation value exceeds the current signatory's limit, resolved by division or business unit.",ISO/IEC 27001:2022 A.5.15,Must,Draft,Security Lead (TBC),"Source: BRS §4.6.
+
+CLIENT QUERY: Please confirm Intuitive Fusion's dollar-threshold delegation-of-authority matrix is available to configure this engine, consistent with the DoA matrix requested at FR-0100."
+SEC-AC05,Authorisation & Access Control,Legal signing authority shall be enforced as a delegation distinct from sourcing and procurement approval authority.,ISO/IEC 27001:2022 A.5.3 (segregation of duties),Must,Draft,Security Lead (TBC),"Source: BRS §4.6, §3.8.
+
+CLIENT QUERY: Please confirm the named roles holding legal signing authority are formally distinct individuals from those holding sourcing/procurement approval authority in Intuitive Fusion's structure, or whether the same person may sometimes hold both (with system-level separation still enforced per transaction)."
+SEC-AC06,Authorisation & Access Control,"Segregation of duties shall be system-enforced between probity or administrative roles and evaluator roles on the same project, preventing the conflicting assignment rather than merely reporting it.",ISO/IEC 27001:2022 A.5.3,Must,Draft,Security Lead (TBC),"Source: BRS §4.6, §3.4.
+
+CLIENT QUERY: Please confirm the specific platform roles this segregation applies to (Tender Administrator, Probity Officer versus Evaluator), consistent with the role-mapping question raised at FR-0190."
+SEC-AC07,Authorisation & Access Control,"Evaluator views shall be isolated by stream, and technical evaluators shall be prevented from accessing commercial pricing data through any view, export, search or report.",ISO/IEC 27001:2022 A.8.3,Must,Draft,Security Lead (TBC),"Source: BRS §3.6.
+
+CLIENT QUERY: Please confirm 'any view, export, search or report' should also block technical evaluators from seeing commercial pricing in AI-generated summaries and negotiation recommendations (FR-0295), not only in raw document views."
+SEC-AC08,Authorisation & Access Control,"Hierarchical data access shall be enforced such that division heads access their division and team leads access only their team's records, while nominated roles (for example legal, procurement and CEO) may be granted platform-wide access.",ISO/IEC 27001:2022 A.8.3,Must,Draft,Security Lead (TBC),"Source: DD — User Access.
+
+CLIENT QUERY: Please confirm the exact hierarchy-to-access mapping (e.g. does a division head see all teams' contracts and evaluations, or only summary-level data) before this control is configured."
+SEC-AC09,Authorisation & Access Control,"Enterprises shall be able to define access policies that override the default hierarchy — for example restricting the procurement pack to evaluation committee members, or signed contracts to contract managers, delegates, procurement, legal and the CEO.",ISO/IEC 27001:2022 A.5.15,Must,Draft,Security Lead (TBC),"Source: DD — User Access.
+
+CLIENT QUERY: Please confirm the specific override policies Intuitive Fusion requires beyond the two examples given (procurement pack restricted to evaluation committee; signed contracts restricted to contract managers, delegates, procurement, legal and CEO)."
+SEC-AC10,Authorisation & Access Control,"Supplier bank account details shall be restricted to a finance-only access segment, excluded from procurement and legal roles, with the option to pass the data directly to the ERP rather than exposing it in the platform.","ISO/IEC 27001:2022 A.8.3, A.5.12",Should,Draft,Security Lead (TBC),"Source: DD — Different Team's user access. The Detailed Design lists this under future functionality, but supplier bank details are captured at onboarding in this release (FR-047). Recommend treating the access restriction as in scope even if the wider finance segmentation is deferred — client decision required.
+
+CLIENT QUERY: The existing Notes already flag that the Detailed Design lists finance-only bank-detail segmentation as future functionality while supplier bank details are captured at onboarding in this release (FR-0235). Please confirm whether the access restriction should be treated as in scope now, even if the wider finance segmentation is deferred."
+SEC-AC11,Authorisation & Access Control,"Each administrative configuration segment (Finance, Users, Legal, Procurement, Delegations, Other) shall be independently permissioned.",ISO/IEC 27001:2022 A.8.2,Must,Draft,Security Lead (TBC),"Source: BRS §3.12.
+
+CLIENT QUERY: Please confirm the specific admin roles Intuitive Fusion will assign to each configuration segment, consistent with the question raised at FR-0685."
+SEC-AC12,Authorisation & Access Control,"The platform shall support configurable human-approval versus AI-approval gates at each stage checkpoint, matched to organisational risk appetite.",ISO/IEC 27001:2022 A.5.15,Must,Draft,Security Lead (TBC),"Source: BRS §4.6; DD — Governance.
+
+CLIENT QUERY: Please confirm which specific stage checkpoints Intuitive Fusion wants configured as human-approval gates versus AI-approval gates at go-live, consistent with the mandatory-checkpoint question raised at FR-0720."
+SEC-AC13,Authorisation & Access Control,"No internal role, including platform administrator and database administrator, shall hold an access path to supplier bid submissions before the tender closing time.","ISO/IEC 27001:2022 A.8.2, A.8.3",Must,Draft,Security Lead (TBC),"Source: BRS §3.4, §4.1. This is a privileged-access exception requirement, not only an encryption requirement — see SEC-D03 and SEC-D04 for the cryptographic enforcement.
+
+CLIENT QUERY: Please confirm this privileged-access exception (no internal role, including admins, can access bid submissions pre-close) should have zero break-glass exception even for platform support/incident response, or whether an audited emergency-access procedure is required."
+SEC-D01,Data Protection & Privacy,All data shall be encrypted in transit and at rest using industry-standard algorithms.,ISO/IEC 27001:2022 A.8.24,Must,Draft,Security Lead (TBC),"Source: BRS §4.1.
+
+CLIENT QUERY: Please confirm Intuitive Fusion has no specific encryption-algorithm standard (e.g. FIPS 140-2/140-3 validated modules) mandated by its own security policy that the platform must align to."
+SEC-D02,Data Protection & Privacy,"Customer-managed encryption keys shall be supported where required, with automatic key rotation.",ISO/IEC 27001:2022 A.8.24,Must,Draft,Security Lead (TBC),"Source: BRS §4.1, §5.6.
+
+CLIENT QUERY: Please confirm whether Intuitive Fusion requires customer-managed encryption keys (rather than platform-managed keys) at go-live, and if so, the required key-rotation frequency."
+SEC-D03,Data Protection & Privacy,Supplier bid submissions shall be encrypted at the point of upload and shall remain inaccessible to any internal user — including database administrators and system architects — until the tender closing deadline passes.,"ISO/IEC 27001:2022 A.8.24, A.8.3",Must,Draft,Security Lead (TBC),"Source: BRS §4.1, §3.4.
+
+CLIENT QUERY: Please confirm 'any internal user' includes emergency/incident-response access scenarios, or whether a documented, audited break-glass exception is acceptable before the tender closing deadline."
+SEC-D04,Data Protection & Privacy,"Per-tenant envelope encryption shall be applied to the bid box, so that even privileged platform operators cannot decrypt submissions before closing time.",ISO/IEC 27001:2022 A.8.24,Must,Draft,Security Lead (TBC),"Source: BRS §5.3.
+
+CLIENT QUERY: Please confirm per-tenant envelope encryption for the bid box is Intuitive Fusion's expected control, or whether a shared platform-level key with strict access controls would also be acceptable."
+SEC-D05,Data Protection & Privacy,Enterprise data shall never be exposed to public or general-availability AI endpoints; routing to an enterprise or in-house AI model shall be enforced at the platform layer.,ISO/IEC 27001:2022 A.8.12 (data leakage prevention),Must,Draft,Security Lead (TBC),"Source: BRS §4.1; DD — Agentic AI. Identified in the BRS risk register as a Critical-impact risk, mitigated by both technical and contractual controls. The Detailed Design contemplates an optional user path to a public model for non-sensitive queries with company documents excluded — this exception must be explicitly designed and controlled or removed.
+
+CLIENT QUERY: The existing Notes already flag this as a Critical-impact risk in the BRS risk register, and note the Detailed Design contemplates an optional path to a public AI model for non-sensitive queries. Please confirm whether that optional public-model path should be built at all, or removed entirely for Intuitive Fusion."
+SEC-D06,Data Protection & Privacy,"AI conversation content shall be afforded the same protection, residency and retention controls as structured platform data.","ISO/IEC 27001:2022 A.8.12, A.5.14",Must,Draft,Security Lead (TBC),"Source: DD — Security.
+
+CLIENT QUERY: Please confirm AI conversation transcripts should be retained for the same duration as structured platform data, consistent with the retention period being confirmed at NFR-CA03."
+SEC-D07,Data Protection & Privacy,"Sensitive data — including banking details, personal information and defence-adjacent project data — shall be automatically discoverable and classifiable, feeding the platform's data-sensitivity risk-scoring factor.","ISO/IEC 27001:2022 A.5.12, A.5.34",Must,Draft,Security Lead (TBC),"Source: BRS §4.1, §5.6.
+
+CLIENT QUERY: Please confirm the specific data-sensitivity categories (beyond banking, personal information and defence-adjacent data) that should feed the automated sensitivity-classification and risk-scoring factor."
+SEC-D08,Data Protection & Privacy,"Personal information shall be handled in accordance with the Australian Privacy Principles under the Privacy Act 1988, including collection notices, use and disclosure limits and data subject access.",Privacy Act 1988 (Cth) — APPs; ISO/IEC 27001:2022 A.5.34,Must,Draft,Legal Lead (TBC),"Source: Derived — not explicit in source documents. Gap: neither source document states a privacy compliance framework, although supplier personal and banking data is captured. Confirm applicable jurisdictions (Australian Privacy Act, GDPR for EU tenders lodged via TED, and any state public-sector privacy legislation).
+
+CLIENT QUERY: The existing Notes already flag that neither source document states an applicable privacy compliance framework despite supplier personal and banking data being captured. Please confirm the applicable jurisdictions — the Australian Privacy Act, GDPR for EU tenders lodged via TED, and/or state public-sector privacy legislation."
+SEC-D09,Data Protection & Privacy,"Cross-border disclosure controls shall prevent customer data leaving the nominated country or region, including for backup, logging and AI processing paths.",Privacy Act 1988 (Cth) APP 8; ISO/IEC 27001:2022 A.5.14,Must,Draft,Security Lead (TBC),"Source: BRS §4.4; DD — Security.
+
+CLIENT QUERY: Please confirm cross-border disclosure controls must block ALL processing paths (including AI model calls and backups) from leaving the nominated region, with no exception for disaster-recovery replication to a different region."
+SEC-D10,Data Protection & Privacy,Tenant and data isolation shall be such that compromise of one tenant or component does not expose other tenants' or users' data.,"ISO/IEC 27001:2022 A.8.22, A.8.31",Must,Draft,Security Lead (TBC),"Source: DD — Security. Sourced from the Detailed Design: 'if hacked, it must also have separation to ensure user data is not accessible'.
+
+CLIENT QUERY: Please confirm the required tenant-isolation model (e.g. logically separated schemas within shared infrastructure versus fully separate infrastructure per tenant) meets Intuitive Fusion's risk appetite."
+SEC-D11,Data Protection & Privacy,"The platform shall support the enterprise's elected storage topology — platform-hosted, hosted in the enterprise's own cloud, or hybrid — with equivalent protection applied in each.",ISO/IEC 27001:2022 A.5.23,Should,Draft,Solution Architect (TBC),"Source: DD — Security. Sourced from the Detailed Design. Materially affects architecture and the residency model (NFR-R01, NFR-C06); requires an early client decision.
+
+CLIENT QUERY: This requirement is sourced from the Detailed Design and materially affects the architecture and residency model (see also NFR-R01, NFR-C06). Please confirm Intuitive Fusion's elected storage topology — platform-hosted, hosted in the enterprise's own cloud, or hybrid — as an early client decision, as the existing Notes already request."
+SEC-L01,Audit Logging & Monitoring,"A full, immutable audit trail shall be maintained across all modules, recording who did what and when, to support governance, compliance and dispute resolution.",ISO/IEC 27001:2022 A.8.15,Must,Draft,Security Lead (TBC),"Source: BRS §4.6; DD — Auditability.
+
+CLIENT QUERY: Please confirm the required retention period for the immutable audit trail across all modules, consistent with the retention period being confirmed at NFR-CA03."
+SEC-L02,Audit Logging & Monitoring,"All administrative and data-plane actions on the underlying cloud platform shall be logged immutably, feeding the platform audit trail and probity reporting.",ISO/IEC 27001:2022 A.8.15,Must,Draft,Solution Architect (TBC),"Source: BRS §5.6.
+
+CLIENT QUERY: Please confirm which team is expected to review the immutable cloud-platform administrative/data-plane logs on an ongoing basis, versus only on-demand for an incident or audit."
+SEC-L03,Audit Logging & Monitoring,"A field-level before-and-after comparison shall be retained for every change to a requirement, document or artefact, together with the user identity and session role that made it.",ISO/IEC 27001:2022 A.8.15,Must,Draft,Security Lead (TBC),"Source: BRS §3.1.
+
+CLIENT QUERY: Please confirm field-level before/after comparison is required for every field in every module, or whether it can be scoped initially to the highest-risk fields (pricing, dates, delegate assignments, signatures)."
+SEC-L04,Audit Logging & Monitoring,"The audit trail shall extend to every field and action, including the date and time of signatures and approvals, when documents were released, what the preferred supplier submitted, and the negotiated outcome including calculated savings and added value.",ISO/IEC 27001:2022 A.8.15,Must,Draft,Security Lead (TBC),"Source: DD — Auditability.
+
+CLIENT QUERY: Please confirm the specific 'negotiated outcome' calculation (savings and added value) this audit trail must capture is the same methodology being confirmed for the FR-0605 captured-savings dashboard."
+SEC-L05,Audit Logging & Monitoring,"All plain-language conversations, AI actions and resulting decisions shall be recorded and auditable.",ISO/IEC 27001:2022 A.8.15,Must,Draft,Security Lead (TBC),"Source: DD — Auditability. Interacts with NFR-CA03 (retention) and SEC-D06 (conversation data protection) — conversation logs are both an audit asset and a sensitive data store.
+
+CLIENT QUERY: Please confirm the required retention period for recorded plain-language conversations and AI actions is the same as confirmed at NFR-CA03 and SEC-D06, or whether conversation records need a different (e.g. shorter) retention treatment."
+SEC-L06,Audit Logging & Monitoring,"Continuous threat monitoring shall detect anomalous access patterns across the platform's cloud accounts, with findings routed to the security team.","ISO/IEC 27001:2022 A.8.16, A.5.7",Must,Draft,Security Lead (TBC),"Source: BRS §5.6.
+
+CLIENT QUERY: Please confirm which team is the intended recipient of continuous threat-monitoring findings, and the expected acknowledgement/response time."
+SEC-L07,Audit Logging & Monitoring,"A compliance-grade probity and audit-trail export shall be available to auditors, providing an unalterable history of evaluator access, conflict-of-interest declarations, individual-to-consensus score changes and portal communications.",ISO/IEC 27001:2022 A.8.15,Must,Draft,Risk & Compliance Lead (TBC),"Source: BRS §3.10.
+
+CLIENT QUERY: Please confirm the required output format for the compliance-grade probity/audit-trail export, consistent with the format question raised at FR-0615."
+SEC-L08,Audit Logging & Monitoring,"Configuration compliance shall be continuously monitored with automated remediation, enforcing encryption, MFA and the absence of publicly accessible storage.",ISO/IEC 27001:2022 A.8.9,Must,Draft,Solution Architect (TBC),"Source: BRS §5.6.
+
+CLIENT QUERY: Please confirm the automated remediation actions expected on a configuration-compliance failure (e.g. auto-revert, or alert-only pending manual fix) for encryption, MFA and public-storage-access controls."
+SEC-AP01,Application Security,A web application firewall shall protect the tender portal and supplier portal from common web exploits.,ISO/IEC 27001:2022 A.8.26; OWASP Top 10,Must,Draft,Security Lead (TBC),"Source: BRS §5.6.
+
+CLIENT QUERY: Please confirm whether Intuitive Fusion has an existing WAF provider/ruleset preference, or whether the platform's standard managed WAF configuration is acceptable."
+SEC-AP02,Application Security,Always-on denial-of-service protection shall be provided for internet-facing portals.,ISO/IEC 27001:2022 A.8.20,Must,Draft,Security Lead (TBC),"Source: BRS §5.6.
+
+CLIENT QUERY: Please confirm the expected peak traffic/attack volume the DDoS protection should be sized against, particularly around tender-close events (see also NFR-SC04)."
+SEC-AP03,Application Security,"Static application security testing shall run in the build pipeline, with security scanning gating release to production.","ISO/IEC 27001:2022 A.8.25, A.8.28, A.8.29",Must,Draft,Security Lead (TBC),"Source: BRS §5.8.
+
+CLIENT QUERY: Please confirm the required severity threshold at which a static-analysis finding should block a production release, versus being logged for remediation in a later cycle."
+SEC-AP04,Application Security,"Every uploaded file shall be scanned for malware at the point of upload; where in-line scanning is not feasible, files shall be held in an isolated quarantine store, scanned, and only then automatically attached to the correct procurement or contract record — with no manual attachment step required of users.",ISO/IEC 27001:2022 A.8.7,Must,Draft,Security Lead (TBC),"Source: DD — Security. Sourced from the Detailed Design, which explicitly rejects deferred periodic scanning as too late and requires automatic routing to the correct record (e.g. by reading the procurement or contract number).
+
+CLIENT QUERY: The existing Notes already record that the Detailed Design explicitly rejects deferred periodic scanning as too slow. Please confirm the maximum acceptable delay between upload and a file becoming available on the correct procurement/contract record if in-line scanning cannot be achieved and a quarantine-then-scan approach is used instead."
+SEC-AP05,Application Security,"Penetration testing shall be conducted before go-live and periodically thereafter, with findings remediated and retested.","ISO/IEC 27001:2022 A.8.29, A.8.8",Must,Draft,Security Lead (TBC),"Source: DD — Security.
+
+CLIENT QUERY: Please confirm the required penetration-testing cadence after go-live (e.g. annually, or after every major release) and whether Intuitive Fusion requires the right to commission its own independent test."
+SEC-AP06,Application Security,"Development, test and production environments and their data shall be separated, and production data shall not be used in non-production environments without masking or de-identification.","ISO/IEC 27001:2022 A.8.31, A.8.33",Must,Draft,Solution Architect (TBC),"Source: Derived — BRS §5.8. Gap: not stated in either source document. Material here because non-production environments would otherwise hold supplier bank details and bid content.
+
+CLIENT QUERY: Please confirm the specific data-masking/de-identification standard required for any production data used in non-production environments, given these would otherwise hold supplier bank details and bid content per the existing Notes."
+SEC-AP07,Application Security,"A secure development lifecycle shall be operated, with security requirements defined, reviewed and tested for each release.","ISO/IEC 27001:2022 A.8.25, A.8.26, A.8.32",Must,Draft,Security Lead (TBC),"Source: Derived — BRS §5.8.
+
+CLIENT QUERY: Please confirm Intuitive Fusion has no existing secure-development-lifecycle standard (e.g. a specific framework or client security questionnaire) the platform's SDLC must be shown to align with."
+SEC-AP08,Application Security,"AI-specific application controls shall be implemented, including prompt-injection resistance for content ingested from supplier submissions and uploaded documents, and constraint of AI outputs to the requesting user's authorisation scope.",ISO/IEC 27001:2022 A.8.26; OWASP Top 10 for LLM Applications,Should,Draft,Security Lead (TBC),"Source: Derived — BRS §3.1, §4.1. Gap: neither source document addresses adversarial input to the AI layer, although the platform ingests untrusted supplier documents and drafts contracts from them. Recommended for design consideration.
+
+CLIENT QUERY: The existing Notes already flag that neither source document addresses adversarial input to the AI layer, despite the platform ingesting untrusted supplier documents and drafting contracts from them. Please confirm this AI-specific control set (prompt-injection resistance, output scoping to the requesting user's authorisation) is acceptable as the baseline, or whether Intuitive Fusion requires additional AI security controls."
+SEC-N01,Infrastructure & Network Security,The platform shall implement government-level security protocols appropriate to public-sector customers and shall be assessed against the applicable control set.,ACSC Information Security Manual / IRAP; ISO/IEC 27001:2022 A.5.23,Must,Draft,Security Lead (TBC),"Source: DD — Security. See NFR-R04 — the scope of the IRAP commitment requires clarification.
+
+CLIENT QUERY: See the related NFR-R04 query — please clarify whether the required government-level security assessment is a full platform IRAP assessment or reliance on IRAP-assessed underlying cloud infrastructure, as this materially changes cost and timeline."
+SEC-N02,Infrastructure & Network Security,Network segmentation shall isolate internet-facing portal components from core transactional databases and document stores.,"ISO/IEC 27001:2022 A.8.20, A.8.22",Must,Draft,Solution Architect (TBC),"Source: Derived — BRS §5.3, §5.6.
+
+CLIENT QUERY: Please confirm the required degree of network segmentation (e.g. separate VPCs/accounts, or logical segmentation within a shared account) between internet-facing portal components and core data stores."
+SEC-N03,Infrastructure & Network Security,"Credentials for third-party ERP, legal-system, sanctions-screening and e-signature integrations shall be held in a managed secret store with automatic rotation.","ISO/IEC 27001:2022 A.5.17, A.8.24",Must,Draft,Solution Architect (TBC),"Source: BRS §5.6, §4.7.
+
+CLIENT QUERY: Please confirm the required secret-rotation frequency for third-party integration credentials (ERP, legal system, sanctions screening, e-signature)."
+SEC-N04,Infrastructure & Network Security,Document storage shall have no public read access; retrieval shall be mediated by the application with origin access controls enforced at the CDN.,"ISO/IEC 27001:2022 A.8.3, A.8.9",Must,Draft,Solution Architect (TBC),"Source: BRS §5.6, §5.7.
+
+CLIENT QUERY: Please confirm no exception to 'no public read access' is required for any document type (e.g. publicly released tender notices that may need direct public linking)."
+SEC-N05,Infrastructure & Network Security,"Backups shall be encrypted and access-controlled to the same standard as primary data, and shall be held within the nominated data-residency boundary.","ISO/IEC 27001:2022 A.8.13, A.5.14",Must,Draft,Solution Architect (TBC),"Source: Derived — BRS §4.3; DD — Security.
+
+CLIENT QUERY: Please confirm backups must remain within the same data-residency boundary as primary data with no exception, including for any disaster-recovery replica region."
+SEC-IR01,Incident Response & Vulnerability Management,"A documented incident response playbook shall be maintained, covering supplier data breach scenarios including exposure of bank details and bid submissions.",ISO/IEC 27001:2022 A.5.24 – A.5.28,Must,Draft,Security Lead (TBC),"Source: BRS §6.2. Identified in the BRS risk register as the response control for a Critical-impact supplier data breach.
+
+CLIENT QUERY: Please confirm the named individual or team who will own and maintain the incident response playbook, and the required testing/rehearsal cadence."
+SEC-IR02,Incident Response & Vulnerability Management,"Technical vulnerabilities shall be monitored, triaged and remediated against defined severity-based service levels, with critical findings blocking pipeline deployment.",ISO/IEC 27001:2022 A.8.8,Must,Draft,Security Lead (TBC),"Source: Derived — BRS §5.8. Gap: remediation SLAs by severity are not stated in either source document and should be agreed.
+
+CLIENT QUERY: Please confirm the required remediation SLA by vulnerability severity (e.g. Critical within 24-48 hours, High within 7 days) — existing Notes already flag that neither source document states this."
+SEC-IR03,Incident Response & Vulnerability Management,Threat detection and security findings shall be routed to a named security owner with defined acknowledgement and response times.,"ISO/IEC 27001:2022 A.5.24, A.8.16",Must,Draft,Security Lead (TBC),"Source: Derived — BRS §5.6.
+
+CLIENT QUERY: Please confirm the named security owner and the required acknowledgement/response time targets for routed security findings."
+SEC-IR04,Incident Response & Vulnerability Management,"A business continuity and ICT readiness plan shall be maintained and tested periodically, covering loss of the platform, loss of an integrated ERP or legal system, and loss of the AI model provider.","ISO/IEC 27001:2022 A.5.29, A.5.30",Must,Draft,Solution Architect (TBC),"Source: DD — Security; BRS §4.3.
+
+CLIENT QUERY: Please confirm the required testing cadence for the business continuity and ICT readiness plan, and whether Intuitive Fusion wants to participate directly in test exercises (e.g. tabletop scenarios) covering loss of the AI model provider."
+SEC-IR05,Incident Response & Vulnerability Management,"Eligible data breach assessment and notification obligations shall be met, with a defined process for assessing and notifying affected individuals and the regulator.",Privacy Act 1988 (Cth) — Notifiable Data Breaches scheme; ISO/IEC 27001:2022 A.5.26,Must,Draft,Legal Lead (TBC),"Source: Derived — Privacy Act 1988. Gap: not addressed in either source document. Directly relevant given supplier personal and banking data is held.
+
+CLIENT QUERY: The existing Notes already flag that neither source document addresses the Notifiable Data Breaches scheme despite supplier personal and banking data being held. Please confirm the process and named responsible role for assessing and notifying affected individuals and the regulator (OAIC) of an eligible data breach."
+SEC-TP01,Third-Party & Vendor Security,"Automated sanctions and watchlist screening (for example OFAC, EU Sanctions, INTERPOL) shall be performed on suppliers during onboarding, with document access quarantined and legal counsel alerted on a match.","ISO/IEC 27001:2022 A.5.19, A.5.20",Must,Draft,Risk & Compliance Lead (TBC),"Source: BRS §3.4.
+
+CLIENT QUERY: Please confirm the specific sanctions/watchlist provider(s) to integrate, consistent with the provider decision requested at FR-0180."
+SEC-TP02,Third-Party & Vendor Security,"Sanctions and financial risk checks shall be re-run on the counterparty where contract negotiations extend beyond 30 days, before execution can proceed.",ISO/IEC 27001:2022 A.5.22,Must,Draft,Risk & Compliance Lead (TBC),"Source: BRS §3.8.
+
+CLIENT QUERY: Please confirm the 30-day negotiation window is the correct re-screening trigger for Intuitive Fusion, consistent with the question raised at FR-0440."
+SEC-TP03,Third-Party & Vendor Security,"Vendor legal name, tax registration and banking details shall be verified against ERP or vetted records before signature options unlock.",ISO/IEC 27001:2022 A.5.20,Must,Draft,Finance Lead (TBC),"Source: BRS §3.8.
+
+CLIENT QUERY: Please confirm the ERP or vetted record source for this pre-signature vendor verification, consistent with the question raised at FR-0415."
+SEC-TP04,Third-Party & Vendor Security,"Where middleware is used for integration, it shall not constitute a weaker security link on either the platform-to-middleware or the enterprise-to-middleware leg, and shall be assessed to the same standard as the platform.","ISO/IEC 27001:2022 A.5.19, A.5.21, A.5.22",Must,Draft,Solution Architect (TBC),"Source: DD — Security. Sourced from the Detailed Design, which states explicitly that the middleware cannot be the weak link.
+
+CLIENT QUERY: Please confirm whether Intuitive Fusion has an existing middleware platform in use today that this requirement needs to be assessed against, or whether middleware selection is entirely open for solution design."
+SEC-TP05,Third-Party & Vendor Security,"Supplier insurance and compliance certificate currency shall be monitored, with a transactional hold blocking new purchase orders where mandatory cover has lapsed.",ISO/IEC 27001:2022 A.5.20,Must,Draft,Risk & Compliance Lead (TBC),"Source: BRS §3.9.
+
+CLIENT QUERY: Please confirm this monitoring/hold control is the same mechanism being confirmed at FR-0550, or a separate compliance check specific to insurance certificates."
+SEC-TP06,Third-Party & Vendor Security,"Cloud service provider security responsibilities shall be documented and reviewed under a shared responsibility model, identifying which controls are inherited and which the platform must implement.","ISO/IEC 27001:2022 A.5.19, A.5.23",Must,Draft,Solution Architect (TBC),"Source: Derived — BRS §5.
+
+CLIENT QUERY: Please confirm Intuitive Fusion (or its cloud/security team) needs to review and formally sign off the shared-responsibility matrix before go-live, or whether Blue Pearl's standard documentation is sufficient."
+SEC-TP07,Third-Party & Vendor Security,Third-party AI model providers shall be assessed and approved against each tenant's AI governance policy before being enabled for that tenant.,"ISO/IEC 27001:2022 A.5.19, A.5.23",Must,Draft,Security Lead (TBC),"Source: BRS §4.1, §6.3. BRS §6.1 and §6.3 record that each enterprise customer nominates its approved model(s) and data-handling policy prior to configuration.
+
+CLIENT QUERY: Please confirm the process and named approver for assessing a third-party AI model provider against a tenant's AI governance policy, consistent with the model-approval dependency noted at NFR-C01."
+SEC-TP08,Third-Party & Vendor Security,"Where legacy data migration is performed by a third party or requires extracts to leave the customer's environment, the transfer and handling shall be governed by the same protection, residency and audit controls as production data.","ISO/IEC 27001:2022 A.5.19, A.5.14",Should,Draft,Data Migration Lead (TBC),"Source: Derived — BRS §3.11. Gap: migration is a high-volume movement of contract and supplier data and is not addressed in the security sections of either source document.
+
+CLIENT QUERY: The existing Notes already flag that data-migration transfer/handling controls are not addressed in the security sections of either source document despite being a high-volume movement of contract and supplier data. Please confirm whether Blue Pearl or a third party will perform the migration, and confirm the protection and audit controls required for any data leaving Intuitive Fusion's environment during that process."

@@ -1,0 +1,25 @@
+{
+  "name": "@if/infra",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "AWS CDK infrastructure as code (NFR-M01) — BRS §5 reference architecture",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "synth": "tsc -p tsconfig.json && cdk synth --quiet",
+    "cdk:deploy": "tsc -p tsconfig.json && cdk deploy",
+    "diff": "tsc -p tsconfig.json && cdk diff",
+    "test": "echo \"TODO: cdk-nag + assertions tests\"",
+    "lint": "echo \"TODO: cdk-nag (AwsSolutions, NIST/ISM packs)\""
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.273.0",
+    "constructs": "^10.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "aws-cdk": "^2.1100.0",
+    "typescript": "~5.9.3"
+  }
+}

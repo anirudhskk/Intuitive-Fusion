@@ -1,0 +1,28 @@
+{
+  "name": "@if/authz",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Authorisation: Cedar policies (RBAC + ABAC) evaluated by Amazon Verified Permissions",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist", "policies"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"TODO: policy unit tests with cedar CLI (cedar authorize --policies policies/ ...)\"",
+    "lint": "echo \"TODO: cedar validate --schema policies/schema.cedarschema --policies policies/\""
+  },
+  "dependencies": {
+    "@aws-sdk/client-verifiedpermissions": "^3.900.0",
+    "@if/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "~5.9.3"
+  }
+}

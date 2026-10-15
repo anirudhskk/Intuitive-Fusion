@@ -1,0 +1,27 @@
+{
+  "name": "@if/supplier-portal",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "External supplier & tender portal — separate identity pool (SEC-A03), WAF-protected (SEC-AP01).",
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "build": "next build",
+    "start": "next start --port 3001",
+    "typecheck": "next typegen && tsc --noEmit",
+    "lint": "echo \"TODO: eslint + axe accessibility checks\"",
+    "test": "echo \"TODO: playwright + axe (WCAG 2.2 AA)\""
+  },
+  "dependencies": {
+    "@if/domain": "workspace:*",
+    "next": "^16.4.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "~5.9.3"
+  }
+}

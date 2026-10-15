@@ -1,0 +1,10 @@
+ID (provisional),Category,Requirement,Priority,Notes
+TR-01,UI,Front end UI should be built using Mobile first approach.,Must,"User personas such as Approvers will be using mobile to access the system and provide their approvals and comments. 
+So the system should load in mobile browsers without compromising the UX."
+TR-02,UI,System UI should meet Accessibility Compliance in Australia.,,
+TR-03,API Endpoints,API endpoints should be available for all backend data to enable integration with third party solution,Must,"API first approach to backend development is recommended so that all backend tables have API endpoints, making it easier for integration with any third party solution."
+TR-04,MCP Server,"Stand up an MCP server exposing key tools and resources, enabling the system to integrate seamlessly with any MCP-compatible AI assistant.",Should,This will be used to allow LLMs to query key data within the system to allow for Integration and Reporting.
+TR-05,SSO,System should support SSO for enterprise customers with Role based access control with granular permissions.,Must,"This should allow SSO configuration with Azure AD, Okta, AWS, and Google at minimum"
+TR-06,Immutable Logs,Every system table and modification needs to be recorded to allow audit logs to the customers.,Must,
+TR-07,"High Availability, Fault Tolerance & Disaster Recovery",The should maintain 99.99% availability and have automated snapshot backups and disaster recovery process when the primary server goes down.,Must,
+TR-08,Automated CI/CD,Establish zero=downtime deployment pipelines with automated integration tests.,Must,

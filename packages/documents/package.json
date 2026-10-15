@@ -1,0 +1,26 @@
+{
+  "name": "@if/documents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Document generation: bind templates to procurement facts, render Word/PDF, approval stamps",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc -p tsconfig.json && node --test 'dist/**/*.test.js'",
+    "lint": "echo \"TODO: eslint\""
+  },
+  "dependencies": {
+    "@if/domain": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "typescript": "~5.9.3"
+  }
+}
